@@ -8,6 +8,7 @@ import numpy as np
 import gym
 import os
 import json
+from train import *
 
 from agent.bc_agent import BCAgent
 from utils import *
@@ -26,7 +27,7 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
     while True:
         
         # TODO: preprocess the state in the same way than in your preprocessing in train_agent.py
-        #    state = ...
+        state = preprocessing(state)
 
         
         # TODO: get the action from your agent! You need to transform the discretized actions to continuous
@@ -35,7 +36,8 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
         #       - the action array fed into env.step() needs to have a shape like np.array([0.0, 0.0, 0.0])
         #       - just in case your agent misses the first turn because it is too fast: you are allowed to clip the acceleration in test_agent.py
         #       - you can use the softmax output to calculate the amount of lateral acceleration
-        # a = ...
+        action_id = agent(state)
+        a = id_to_action(action_id)
 
         next_state, r, done, info = env.step(a)   
         episode_reward += r       
@@ -59,8 +61,8 @@ if __name__ == "__main__":
     n_test_episodes = 15                  # number of episodes to test
 
     # TODO: load agent
-    # agent = BCAgent(...)
-    # agent.load("models/bc_agent.pt")
+    agent = BCAgent()
+    agent.load("models/bc_agent.pt")
 
     env = gym.make('CarRacing-v0').unwrapped
 
