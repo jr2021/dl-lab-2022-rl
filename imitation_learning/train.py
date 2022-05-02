@@ -1,14 +1,16 @@
 from __future__ import print_function
 
 import sys
+
+import torch
 sys.path.append("../") 
 
 import pickle
 import numpy as np
 import os
 import gzip
-import matplotlib.pyplot as plt
-
+# import matplotlib.pyplot as plt
+import torchvision
 from utils import *
 from agent.bc_agent import BCAgent
 from tensorboard_evaluation import Evaluation
@@ -77,13 +79,16 @@ def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_
         X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size)
         loss = agent.update(X_batch, y_batch)
 
+        print('minibatch ', i, ' loss ', loss)
+
         if i % 10 == 0:
             # TODO: compute training/ validation accuracy and write it to tensorboard
             tensorboard_eval.write_episode_data(i, {'loss': loss})
+
       
     # TODO: save your agent
-    # model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
-    # print("Model saved in file: %s" % model_dir)
+    model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
+    print("Model saved in file: %s" % model_dir)
 
 def sample_minibatch(X_train, y_train, batch_size):
     indices = np.random.randint(low=0, high=len(X_train), size=batch_size)

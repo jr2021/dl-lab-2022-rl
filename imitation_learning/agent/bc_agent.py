@@ -9,7 +9,7 @@ class BCAgent:
         # TODO: Define network, loss function, optimizer
         self.model = CNN()
         self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.1)
+        self.optimizer = torch.optim.Adam(self.model.parameters())
 
     def update(self, X_batch, y_batch):
         # TODO: transform input to tensors
@@ -31,9 +31,9 @@ class BCAgent:
         return outputs
 
     def load(self, file_name):
-        self.net.load_state_dict(torch.load(file_name))
+        self.model.load_state_dict(torch.load(file_name))
 
 
     def save(self, file_name):
-        torch.save(self.net.state_dict(), file_name)
+        torch.save(self.model.state_dict(), file_name)
 
