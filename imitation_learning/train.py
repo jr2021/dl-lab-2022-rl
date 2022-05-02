@@ -54,7 +54,7 @@ def preprocessing(X_train, y_train, X_valid, y_valid, history_length=1):
     return X_train, y_train, X_valid, y_valid
 
 
-def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard"):
+def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard"):
     
     # create result and model folders
     if not os.path.exists(model_dir):
@@ -66,7 +66,7 @@ def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
     agent = BCAgent()
     
-    tensorboard_eval = Evaluation(tensorboard_dir, 'fixme', ['loss'])
+    tensorboard_eval = Evaluation(tensorboard_dir, 'fixme', ['train-loss', 'train-acc'])
 
     # TODO: implement the training
     # 
@@ -75,17 +75,26 @@ def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_
     #    your training *during* the training in your web browser
 
     # training loop
+    train_loss, train_acc = 0, 0
     for i in range(n_minibatches):
         X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size)
-        loss = agent.update(X_batch, y_batch)
-
-        print('minibatch ', i, ' loss ', loss)
+        loss, logits = agent.update(X_batch, y_batch)
+        
+        train_loss += loss
+        train_acc += accuracy(logits, y_batch)
 
         if i % 10 == 0:
             # TODO: compute training/ validation accuracy and write it to tensorboard
-            tensorboard_eval.write_episode_data(i, {'loss': loss})
+            print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10))
+            tensorboard_eval.write_episode_data(i, {'train-loss': train_loss, 'train-acc': train_acc})
+            train_loss, train_acc = 0, 0
 
-      
+    logits = agent.predict(X_valid)
+    valid_loss = agent.loss_fn(logits, torch.LongTensor(y_valid))
+    valid_acc = accuracy(logits, y_valid)
+    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' val_loss: ', float(valid_loss), ' valid-acc: ', float(valid_acc))
+
+
     # TODO: save your agent
     model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
     print("Model saved in file: %s" % model_dir)
@@ -97,6 +106,12 @@ def sample_minibatch(X_train, y_train, batch_size):
     return X_batch, y_batch
 
 
+def accuracy(logits, y):
+    y_pred = torch.argmax(logits, axis=1)
+
+    return torch.sum(y_pred == torch.Tensor(y)) / len(y)
+
+
 if __name__ == "__main__":
 
     # read data    
@@ -106,5 +121,5 @@ if __name__ == "__main__":
     X_train, y_train, X_valid, y_valid = preprocessing(X_train, y_train, X_valid, y_valid, history_length=1)
 
     # train model (you can change the parameters!)
-    train_model(X_train, y_train, X_valid, n_minibatches=1000, batch_size=64, lr=1e-4)
+    train_model(X_train, y_train, X_valid, y_valid, n_minibatches=1000, batch_size=64, lr=1e-4)
  

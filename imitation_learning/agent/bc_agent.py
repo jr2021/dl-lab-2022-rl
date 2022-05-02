@@ -17,15 +17,16 @@ class BCAgent:
 
         # TODO: forward + backward + optimize
         self.optimizer.zero_grad()
-        y_pred = self.model(X_batch) 
+        y_pred = self.predict(X_batch)
         loss = self.loss_fn(y_pred, y_batch)
         loss.backward()
         self.optimizer.step()
 
-        return loss
+        return loss, y_pred
 
     def predict(self, X):
         # TODO: forward pass
+        X = torch.Tensor(X)
         outputs = self.model(X)
 
         return outputs
