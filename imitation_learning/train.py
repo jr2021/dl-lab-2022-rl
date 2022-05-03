@@ -1,4 +1,5 @@
 from __future__ import print_function
+import enum
 
 import sys
 
@@ -14,6 +15,7 @@ import torchvision
 from utils import *
 from agent.bc_agent import BCAgent
 from tensorboard_evaluation import Evaluation
+from sklearn.utils.class_weight import compute_class_weight
 
 def read_data(datasets_dir="./data", frac = 0.1):
     """
@@ -62,22 +64,27 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
  
     print("... train model")
 
-
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
     agent = BCAgent()
     
     tensorboard_eval = Evaluation(tensorboard_dir, 'fixme', ['train-loss', 'train-acc'])
 
     # TODO: implement the training
-    # 
+
     # 1. write a method sample_minibatch and perform an update step
     # 2. compute training/ validation accuracy and loss for the batch and visualize them with tensorboard. You can watch the progress of
     #    your training *during* the training in your web browser
 
+    class_weights = compute_class_weight(class_weight=None, classes=np.unique(y_train), y=y_train)
+    sample_probs = np.zeros(shape=len(X_train))
+    for (i, weight) in enumerate(class_weights):
+        sample_probs[np.array(y_train) == i] = weight
+    sample_probs = np.exp(sample_probs) / sum(np.exp(sample_probs))
+
     # training loop
     train_loss, train_acc = 0, 0
     for i in range(n_minibatches):
-        X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size)
+        X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size, sample_probs)
         loss, logits = agent.update(X_batch, y_batch)
         
         train_loss += loss
@@ -86,7 +93,7 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
         if i % 10 == 0:
             # TODO: compute training/ validation accuracy and write it to tensorboard
             print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10))
-            tensorboard_eval.write_episode_data(i, {'train-loss': train_loss, 'train-acc': train_acc})
+            tensorboard_eval.write_episode_data(i, {'train-loss': train_loss/10, 'train-acc': train_acc/10})
             train_loss, train_acc = 0, 0
 
     logits = agent.predict(X_valid)
@@ -99,8 +106,8 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
     print("Model saved in file: %s" % model_dir)
 
-def sample_minibatch(X_train, y_train, batch_size):
-    indices = np.random.randint(low=0, high=len(X_train), size=batch_size)
+def sample_minibatch(X_train, y_train, batch_size, sample_probs):
+    indices = np.random.choice(np.arange(len(X_train)), size=batch_size, p=sample_probs)
     X_batch, y_batch = np.array(X_train)[indices], np.array(y_train)[indices]
 
     return X_batch, y_batch
