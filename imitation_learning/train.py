@@ -10,8 +10,6 @@ import pickle
 import numpy as np
 import os
 import gzip
-# import matplotlib.pyplot as plt
-import torchvision
 from utils import *
 from agent.bc_agent import BCAgent
 from tensorboard_evaluation import Evaluation
@@ -60,14 +58,14 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     
     # create result and model folders
     if not os.path.exists(model_dir):
-        os.mkdir(model_dir)  
+        os.mkdir(model_dir)
  
     print("... train model")
 
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
     agent = BCAgent()
     
-    tensorboard_eval = Evaluation(tensorboard_dir, 'fixme', ['train-loss', 'train-acc'])
+    tensorboard_eval = Evaluation(tensorboard_dir, 'imitation_learning', ['train-loss', 'train-acc', 'valid-loss', 'valid-acc'])
 
     # TODO: implement the training
 
@@ -82,24 +80,28 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     sample_probs = np.exp(sample_probs) / sum(np.exp(sample_probs))
 
     # training loop
-    train_loss, train_acc = 0, 0
+    train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
     for i in range(n_minibatches):
         X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size, sample_probs)
         loss, logits = agent.update(X_batch, y_batch)
-        
         train_loss += loss
         train_acc += accuracy(logits, y_batch)
 
-        if i % 10 == 0:
+        X_batch, y_batch = sample_minibatch(X_valid, y_valid, batch_size, sample_probs)
+        logits = agent.predict(X_batch)
+        valid_loss += agent.loss_fn(logits, torch.LongTensor(y_batch))
+        valid_acc += accuracy(logits, y_batch)
+
+        if i % 10 == 0 :
             # TODO: compute training/ validation accuracy and write it to tensorboard
-            print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10))
-            tensorboard_eval.write_episode_data(i, {'train-loss': train_loss/10, 'train-acc': train_acc/10})
-            train_loss, train_acc = 0, 0
+            print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' val_loss: ', float(valid_loss/10), ' valid-acc: ', float(valid_acc/10))
+            tensorboard_eval.write_episode_data(i, {'train-loss': train_loss/10, 'train-acc': train_acc/10, 'valid-loss': valid_loss/10, 'valid-acc': valid_acc/10})
+            train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
 
     logits = agent.predict(X_valid)
     valid_loss = agent.loss_fn(logits, torch.LongTensor(y_valid))
     valid_acc = accuracy(logits, y_valid)
-    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' val_loss: ', float(valid_loss), ' valid-acc: ', float(valid_acc))
+    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' valid-loss: ', float(valid_loss/10), ' valid-acc: ', float(valid_acc/10))
 
 
     # TODO: save your agent

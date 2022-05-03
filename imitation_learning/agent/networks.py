@@ -13,7 +13,7 @@ class CNN(nn.Module):
 
         # TODO : define layers of a convolutional neural network
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=4, kernel_size=3),
+            nn.Conv2d(in_channels=history_length + 1, out_channels=4, kernel_size=3),
             nn.BatchNorm2d(num_features=4),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),

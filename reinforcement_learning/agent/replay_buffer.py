@@ -17,6 +17,8 @@ class ReplayBuffer:
         """
         This method adds a transition to the replay buffer.
         """
+        # TODO: check capacity and remove oldest
+
         self._data.states.append(state)
         self._data.actions.append(action)
         self._data.next_states.append(next_state)
@@ -27,6 +29,8 @@ class ReplayBuffer:
         """
         This method samples a batch of transitions.
         """
+        # TODO: transform to Tensor
+
         batch_indices = np.random.choice(len(self._data.states), batch_size)
         batch_states = np.array([self._data.states[i] for i in batch_indices])
         batch_actions = np.array([self._data.actions[i] for i in batch_indices])
