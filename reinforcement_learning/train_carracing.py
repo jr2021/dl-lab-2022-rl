@@ -120,7 +120,9 @@ if __name__ == "__main__":
     env = gym.make('CarRacing-v0').unwrapped
     
     # TODO: Define Q network, target network and DQN agent
-    # ...
+    
+
+    agent = DQNAgent(Q=Q, Q_target=Q_target, num_actions=4)
     
     train_online(env, agent, num_episodes=1000, history_length=0, model_dir="./models_carracing")
 

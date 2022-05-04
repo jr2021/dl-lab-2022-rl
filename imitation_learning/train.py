@@ -48,6 +48,9 @@ def preprocessing(X_train, y_train, X_valid, y_valid, history_length=1):
     # At first you should only use the current image as input to your network to learn the next action. Then the input states
     # have shape (96, 96, 1). Later, add a history of the last N images to your state so that a state has shape (96, 96, N).
     X_train, X_valid = rgb2gray(X_train), rgb2gray(X_valid)
+    X_train, X_valid = [x[12:-12, 12:-12] for x in X_train], [x[12:-12, 12:-12] for x in X_valid]
+    X_train = [X_train[i-history_length:i] for i in range(history_length, len(X_train))]
+    X_valid = [X_valid[i-history_length:i] for i in range(history_length, len(X_valid))]
     y_train = [action_to_id(y) for y in y_train]
     y_valid = [action_to_id(y) for y in y_valid]
 
@@ -63,6 +66,8 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     print("... train model")
 
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
+
+    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
     agent = BCAgent()
     
     tensorboard_eval = Evaluation(tensorboard_dir, 'imitation_learning', ['train-loss', 'train-acc', 'valid-loss', 'valid-acc'])
@@ -73,22 +78,19 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     # 2. compute training/ validation accuracy and loss for the batch and visualize them with tensorboard. You can watch the progress of
     #    your training *during* the training in your web browser
 
-    class_weights = compute_class_weight(class_weight=None, classes=np.unique(y_train), y=y_train)
-    sample_probs = np.zeros(shape=len(X_train))
-    for (i, weight) in enumerate(class_weights):
-        sample_probs[np.array(y_train) == i] = weight
-    sample_probs = np.exp(sample_probs) / sum(np.exp(sample_probs))
-
     # training loop
     train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
     for i in range(n_minibatches):
-        X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size, sample_probs)
+        X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size, class_weights)
         loss, logits = agent.update(X_batch, y_batch)
         train_loss += loss
         train_acc += accuracy(logits, y_batch)
 
-        X_batch, y_batch = sample_minibatch(X_valid, y_valid, batch_size, sample_probs)
+        X_batch, y_batch = sample_minibatch(X_valid, y_valid, batch_size)
         logits = agent.predict(X_batch)
+
+        print(logits)
+
         valid_loss += agent.loss_fn(logits, torch.LongTensor(y_batch))
         valid_acc += accuracy(logits, y_batch)
 
@@ -101,16 +103,22 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     logits = agent.predict(X_valid)
     valid_loss = agent.loss_fn(logits, torch.LongTensor(y_valid))
     valid_acc = accuracy(logits, y_valid)
-    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' valid-loss: ', float(valid_loss/10), ' valid-acc: ', float(valid_acc/10))
-
+    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' valid-loss: ', float(valid_loss), ' valid-acc: ', float(valid_acc))
 
     # TODO: save your agent
     model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
     print("Model saved in file: %s" % model_dir)
 
-def sample_minibatch(X_train, y_train, batch_size, sample_probs):
-    indices = np.random.choice(np.arange(len(X_train)), size=batch_size, p=sample_probs)
-    X_batch, y_batch = np.array(X_train)[indices], np.array(y_train)[indices]
+def sample_minibatch(X, y, batch_size, class_weights=[0.25, 0.25, 0.25, 0.25]):
+
+    sample_probs = np.zeros(shape=len(X))
+    for (i, weight) in enumerate(class_weights):
+        sample_probs[np.array(y) == i] = weight
+
+    sample_probs = np.exp(sample_probs) / sum(np.exp(sample_probs))
+
+    indices = np.random.choice(np.arange(len(X)), size=batch_size, p=sample_probs)
+    X_batch, y_batch = np.array(X)[indices], np.array(y)[indices]
 
     return X_batch, y_batch
 

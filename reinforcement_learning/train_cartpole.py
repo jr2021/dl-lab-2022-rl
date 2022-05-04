@@ -53,19 +53,21 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
 
     # training
     for i in range(num_episodes):
-        print("episode: ",i)
-        stats = run_episode(env, agent, deterministic=False, do_training=True)
-        tensorboard.write_episode_data(i, eval_dict={  "episode_reward" : stats.episode_reward, 
-                                                                "a_0" : stats.get_action_usage(0),
-                                                                "a_1" : stats.get_action_usage(1)})
+        print("episode: ", i)
+        stats = run_episode(env=env, env=agent, deterministic=False, do_training=True)
+        tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : stats.episode_reward, 
+                                                             "a_0" : stats.get_action_usage(action_id=0),
+                                                             "a_1" : stats.get_action_usage(action_id=1)})
 
         # TODO: evaluate your agent every 'eval_cycle' episodes using run_episode(env, agent, deterministic=True, do_training=False) to 
         # check its performance with greedy actions only. You can also use tensorboard to plot the mean episode reward.
-        # ...
-        # if i % eval_cycle == 0:
-        #    for j in range(num_eval_episodes):
-        #       ...
-        
+        if i % eval_cycle == 0:
+            for j in range(num_eval_episodes):
+                stats = run_episode(env=env, agent=agent, deterministic=True, do_training=False)
+            tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : stats.episode_reward, 
+                                                                 "a_0" : stats.get_action_usage(action_id=0),
+                                                                 "a_1" : stats.get_action_usage(action_id=1)})
+
         # store model.
         if i % eval_cycle == 0 or i >= (num_episodes - 1):
             agent.save(os.path.join(model_dir, "dqn_agent.pt"))
@@ -76,7 +78,7 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
 if __name__ == "__main__":
 
     num_eval_episodes = 5   # evaluate on 5 episodes
-    eval_cycle = 20         # evaluate every 10 episodes
+    eval_cycle = 20         # evaluate every 20 episodes
 
     # You find information about cartpole in 
     # https://github.com/openai/gym/wiki/CartPole-v0
@@ -89,6 +91,10 @@ if __name__ == "__main__":
 
     # TODO: 
     # 1. init Q network and target network (see dqn/networks.py)
+    Q = MLP(state_dim=state_dim, action_dim=num_actions)
+    Q_target = MLP(state_dim=state_dim, action_dim=num_actions)
     # 2. init DQNAgent (see dqn/dqn_agent.py)
+    agent = DQNAgent(Q=Q, Q_target=Q_target, num_actions=num_actions)
     # 3. train DQN agent with train_online(...)
+    train_online(env=env, agent=agent, num_episodes=1000)
  

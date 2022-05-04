@@ -14,7 +14,7 @@ if __name__ == "__main__":
     env = gym.make("CartPole-v0").unwrapped
 
     # TODO: load DQN agent
-    # ...
+    agent = torch.load('models_cartpole/dqn_agent.pt')
  
     n_test_episodes = 15
 

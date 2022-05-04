@@ -53,12 +53,20 @@ class DQNAgent:
 
         # TODO:
         # 1. add current transition to replay buffer
-        # 2. sample next batch and perform batch update: 
+        self.replay_buffer.add_transition(state=state, action=action, next_state=next_state, reward=reward, terminal=terminal)
+        # 2. sample next batch and perform batch update:
+        next_batch = self.replay_buffer.next_batch(batch_size=self.batch_size)
+        batch_states, batch_actions, batch_next_states, batch_rewards, batch_dones = next_batch
+        batch_state_actions = self.Q(batch_states)
         #       2.1 compute td targets and loss 
-        #              td_target =  reward + discount * max_a Q_target(next_state_batch, a)
+        expected_state_actions =  batch_rewards + self.gamma * np.argmax(self.Q_target(batch_next_states))
+        loss = self.loss_function(expected_state_actions, batch_state_actions)
         #       2.2 update the Q network
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         #       2.3 call soft update for target network
-        #           soft_update(self.Q_target, self.Q, self.tau)
+        soft_update(target=self.Q_target, source=self.Q, tau=self.tau)
 
     def act(self, state, deterministic):
         """
@@ -73,14 +81,14 @@ class DQNAgent:
         if deterministic or r > self.epsilon:
             pass
             # TODO: take greedy action (argmax)
-            # action_id = ...
+            action_id = np.argmax(a=self.Q(state))
         else:
             pass
             # TODO: sample random action
             # Hint for the exploration in CarRacing: sampling the action from a uniform distribution will probably not work. 
             # You can sample the agents actions with different probabilities (need to sum up to 1) so that the agent will prefer to accelerate or going straight.
             # To see how the agent explores, turn the rendering in the training on and look what the agent is doing.
-            # action_id = ...
+            action_id = np.random.choice(a=np.arange(start=0, stop=self.num_actions))
 
         return action_id
 

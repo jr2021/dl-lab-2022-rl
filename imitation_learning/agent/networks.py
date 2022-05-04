@@ -13,26 +13,23 @@ class CNN(nn.Module):
 
         # TODO : define layers of a convolutional neural network
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels=history_length + 1, out_channels=4, kernel_size=3),
-            nn.BatchNorm2d(num_features=4),
+            nn.Conv2d(in_channels=history_length + 1, out_channels=16, kernel_size=5),
+            nn.BatchNorm2d(num_features=16),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(in_channels=4, out_channels=8, kernel_size=5),
-            nn.BatchNorm2d(num_features=8),
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5),
+            nn.BatchNorm2d(num_features=32),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
         )
 
         self.flatten = nn.Flatten()
 
         self.linear = nn.Sequential(
-	    nn.Linear(in_features=3528, out_features=4)
-	)
+	        nn.Linear(in_features=1600, out_features=out_features)
+	    )
 
 
     def forward(self, x):
         # TODO: compute forward pass
-        x = torch.unsqueeze(x, dim=1)
         x = self.conv(x)
         x = self.flatten(x)
         x = self.linear(x)

@@ -29,7 +29,6 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
         # TODO: preprocess the state in the same way than in your preprocessing in train_agent.py
         state = preprocessing(state)
 
-        
         # TODO: get the action from your agent! You need to transform the discretized actions to continuous
         # actions.
         # hints:
