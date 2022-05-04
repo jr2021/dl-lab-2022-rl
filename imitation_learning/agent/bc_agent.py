@@ -5,10 +5,10 @@ import torch.nn.functional as F
 
 class BCAgent:
     
-    def __init__(self):
+    def __init__(self, class_weights=[0.25, 0.25, 0.25, 0.25], history_length=0):
         # TODO: Define network, loss function, optimizer
-        self.model = CNN()
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.model = CNN(history_length=history_length)
+        self.loss_fn = nn.CrossEntropyLoss(weight=torch.Tensor(class_weights))
         self.optimizer = torch.optim.Adam(self.model.parameters())
 
     def update(self, X_batch, y_batch):
