@@ -4,6 +4,7 @@ import os
 import gzip
 import pickle
 import torch
+import queue
 
 class ReplayBuffer:
 
@@ -19,11 +20,11 @@ class ReplayBuffer:
         This method adds a transition to the replay buffer.
         """
         # TODO: check capacity and remove oldest
-        self._data.states[:1e5]
-        self._data.actions[:1e5]
-        self._data.next_states[:1e5]
-        self._data.rewards[:1e5]
-        self._data.dones[:1e5]
+        del self._data.states[100000:]
+        del self._data.actions[100000:]
+        del self._data.next_states[100000:]
+        del self._data.rewards[100000:]
+        del self._data.dones[100000:]
 
         self._data.states.append(state)
         self._data.actions.append(action)
@@ -36,9 +37,9 @@ class ReplayBuffer:
         This method samples a batch of transitions.
         """
         # TODO: transform to Tensor
-        batch_indices = torch.Tensor(np.random.choice(len(self._data.states), batch_size))
+        batch_indices = np.random.choice(len(self._data.states), batch_size)
         batch_states = torch.Tensor(np.array([self._data.states[i] for i in batch_indices]))
-        batch_actions = torch.Tensor(np.array([self._data.actions[i] for i in batch_indices]))
+        batch_actions = torch.LongTensor(np.array([self._data.actions[i] for i in batch_indices]))
         batch_next_states = torch.Tensor(np.array([self._data.next_states[i] for i in batch_indices]))
         batch_rewards = torch.Tensor(np.array([self._data.rewards[i] for i in batch_indices]))
         batch_dones = torch.Tensor(np.array([self._data.dones[i] for i in batch_indices]))

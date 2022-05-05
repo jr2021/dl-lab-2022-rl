@@ -28,12 +28,12 @@ class DQNAgent:
             lr: learning rate of the optimizer
         """
         # setup networks
-        self.Q = Q.cuda()
-        self.Q_target = Q_target.cuda()
+        self.Q = Q
+        self.Q_target = Q_target
         self.Q_target.load_state_dict(self.Q.state_dict())
 
         # define replay buffer
-        self.replay_buffer = ReplayBuffer(history_length)
+        self.replay_buffer = ReplayBuffer()
 
         # parameters
         self.batch_size = batch_size
@@ -53,14 +53,15 @@ class DQNAgent:
 
         # TODO:
         # 1. add current transition to replay buffer
-        self.replay_buffer.add_transition(state=state, action=action, next_state=next_state, reward=reward, terminal=terminal)
+        self.replay_buffer.add_transition(state=state, action=action, next_state=next_state, reward=reward, done=terminal)
         # 2. sample next batch and perform batch update:
         next_batch = self.replay_buffer.next_batch(batch_size=self.batch_size)
         batch_states, batch_actions, batch_next_states, batch_rewards, batch_dones = next_batch
-        batch_state_actions = self.Q(batch_states)
+        batch_state_actions = self.Q(batch_states).gather(1, batch_actions.unsqueeze(-1)).squeeze(-1)
         #       2.1 compute td targets and loss 
-        expected_state_actions =  batch_rewards + self.gamma * np.argmax(self.Q_target(batch_next_states))
-        loss = self.loss_function(expected_state_actions, batch_state_actions)
+        expected_state_actions = batch_rewards + self.gamma * self.Q_target(batch_next_states).max(dim=1)[0]
+        expected_state_actions = torch.Tensor([0 if done else expected_state_actions[i] for i, done in enumerate(batch_dones)])
+        loss = self.loss_function(batch_state_actions, expected_state_actions)
         #       2.2 update the Q network
         self.optimizer.zero_grad()
         loss.backward()
@@ -79,11 +80,9 @@ class DQNAgent:
         """
         r = np.random.uniform()
         if deterministic or r > self.epsilon:
-            pass
             # TODO: take greedy action (argmax)
-            action_id = np.argmax(a=self.Q(state))
+            action_id = int(self.Q(torch.Tensor(state)).max(dim=0)[1])
         else:
-            pass
             # TODO: sample random action
             # Hint for the exploration in CarRacing: sampling the action from a uniform distribution will probably not work. 
             # You can sample the agents actions with different probabilities (need to sum up to 1) so that the agent will prefer to accelerate or going straight.

@@ -33,7 +33,8 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
         # actions.
         # hints:
         #       - the action array fed into env.step() needs to have a shape like np.array([0.0, 0.0, 0.0])
-        #       - just in case your agent misses the first turn because it is too fast: you are allowed to clip the acceleration in test_agent.py
+        #       - just in case your agent misses the first turn because
+        #  it is too fast: you are allowed to clip the acceleration in test_agent.py
         #       - you can use the softmax output to calculate the amount of lateral acceleration
         action_id = agent(state)
         a = id_to_action(action_id)

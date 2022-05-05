@@ -49,12 +49,12 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
  
     print("... train agent")
 
-    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"), ["episode_reward", "a_0", "a_1"])
+    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"), 'dqn_cartpole', ["episode_reward", "a_0", "a_1"])
 
     # training
+
     for i in range(num_episodes):
-        print("episode: ", i)
-        stats = run_episode(env=env, env=agent, deterministic=False, do_training=True)
+        stats = run_episode(env=env, agent=agent, deterministic=False, do_training=True)
         tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : stats.episode_reward, 
                                                              "a_0" : stats.get_action_usage(action_id=0),
                                                              "a_1" : stats.get_action_usage(action_id=1)})
@@ -62,11 +62,16 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
         # TODO: evaluate your agent every 'eval_cycle' episodes using run_episode(env, agent, deterministic=True, do_training=False) to 
         # check its performance with greedy actions only. You can also use tensorboard to plot the mean episode reward.
         if i % eval_cycle == 0:
+            episode_reward = 0
             for j in range(num_eval_episodes):
                 stats = run_episode(env=env, agent=agent, deterministic=True, do_training=False)
-            tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : stats.episode_reward, 
+                episode_reward += stats.episode_reward
+            
+            print('episode: ', i, ' valid_reward: ', float(episode_reward/num_eval_episodes))
+            tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : episode_reward/num_eval_episodes, 
                                                                  "a_0" : stats.get_action_usage(action_id=0),
                                                                  "a_1" : stats.get_action_usage(action_id=1)})
+                
 
         # store model.
         if i % eval_cycle == 0 or i >= (num_episodes - 1):
