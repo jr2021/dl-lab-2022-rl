@@ -5,17 +5,17 @@ import torch.nn.functional as F
 
 class BCAgent:
     
-    def __init__(self, class_weights=[0.25, 0.25, 0.25, 0.25], history_length=0):
+    def __init__(self, history_length=0, class_weights=None):
         # TODO: Define network, loss function, optimizer
         self.model = CNN(history_length=history_length)
-        self.loss_fn = nn.CrossEntropyLoss(weight=torch.Tensor(class_weights))
+        self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters())
 
     def update(self, X_batch, y_batch):
         # TODO: forward + backward + optimize
         self.optimizer.zero_grad()
         y_pred = self.predict(X_batch)
-        loss = self.loss_fn(y_pred, torch.LongTensor(y_batch))
+        loss = self.loss_fn(y_pred, y_batch)
         loss.backward()
         self.optimizer.step()
 
@@ -23,7 +23,6 @@ class BCAgent:
 
     def predict(self, X):
         # TODO: forward pass
-        X = torch.Tensor(X)
         outputs = self.model(X)
 
         return outputs

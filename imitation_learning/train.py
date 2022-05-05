@@ -64,15 +64,18 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
     # create result and model folders
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
- 
+
     print("... train model")
 
+    device = torch.device('cuda')
+
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
-    class_dist = np.bincount(y_train) / len(y_train)
-    weights = torch.Tensor([1/class_dist[int(y)] for y in y_train])
-    sampler = WeightedRandomSampler(weights=weights, num_samples=len(y_train))
+    class_weights = torch.Tensor(np.bincount(y_train) / len(y_train))
+    class_weights = class_weights.to(device)
+    sample_weights = torch.Tensor([1/class_weights[int(y)] for y in y_train])
+    sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(y_train))
     
-    agent = BCAgent(history_length=history_length)
+    agent = BCAgent(history_length=history_length, class_weights=class_weights)
     
     tensorboard_eval = Evaluation(tensorboard_dir, 'imitation_learning', ['train-loss', 'train-acc', 'valid-loss', 'valid-acc'])
 
@@ -84,22 +87,26 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
 
     # training loop
     train_loader = DataLoader(train, batch_size=batch_size, sampler=sampler)
-    valid_loader = DataLoader(valid, batch_size=batch_size, shuffle=True)
     transform = T.Compose([
-        T.ToTensor()
+       T.ToTensor()
     ])
 
     train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
-    for i, (X_batch, y_batch) in enumerate(train_loader):
+    for i in range(n_minibatches):
+        X_batch, y_batch = next(iter(train_loader))
         X_batch = transform(X_batch)
+        y_batch = y_batch.type(torch.LongTensor)
+        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
         loss, logits = agent.update(X_batch, y_batch)
         train_loss += loss
         train_acc += accuracy(logits, y_batch)
 
-        X_batch, y_batch = iter(valid_loader).next()
-        logits = agent.predict(X_batch)
-        valid_loss += agent.loss_fn(logits, y_batch)
-        valid_acc += accuracy(logits, y_batch)
+        with torch.no_grad():
+            y_valid = y_valid.type(torch.LongTensor)
+            X_valid, y_valid = X_valid.to(device), y_valid.to(device)
+            logits = agent.predict(X_valid)
+            valid_loss += agent.loss_fn(logits, y_valid)
+            valid_acc += accuracy(logits, y_valid)
 
         if i % 10 == 0:
             # TODO: compute training/ validation accuracy and write it to tensorboard
@@ -115,7 +122,7 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
 def accuracy(logits, y):
     y_pred = torch.argmax(logits, axis=1)
 
-    return torch.sum(y_pred == torch.Tensor(y)) / len(y)
+    return torch.sum(y_pred == y) / len(y)
 
 
 if __name__ == "__main__":
@@ -129,5 +136,5 @@ if __name__ == "__main__":
     train, valid = TensorDataset(X_train, y_train), TensorDataset(X_valid, y_valid)
 
     # train model (you can change the parameters!)
-    train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches=1000, batch_size=64, lr=1e-4, history_length=0)
+    train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches=10000, batch_size=64, lr=1e-4, history_length=0)
  
