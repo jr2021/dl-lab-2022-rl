@@ -1,8 +1,10 @@
 from __future__ import print_function
 import enum
-
+from matplotlib.cbook import ls_mapper
+from matplotlib.transforms import Transform 
+import torchvision.transforms as T
+from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 import sys
-
 import torch
 sys.path.append("../") 
 
@@ -48,16 +50,16 @@ def preprocessing(X_train, y_train, X_valid, y_valid, history_length=0):
     # At first you should only use the current image as input to your network to learn the next action. Then the input states
     # have shape (96, 96, 1). Later, add a history of the last N images to your state so that a state has shape (96, 96, N).
     X_train, X_valid = rgb2gray(X_train), rgb2gray(X_valid)
-    #X_train, X_valid = [x[12:-12, 12:-12] for x in X_train], [x[12:-12, 12:-12] for x in X_valid]
+    X_train, X_valid = [x[12:-12, 12:-12] for x in X_train], [x[12:-12, 12:-12] for x in X_valid]
     X_train = [X_train[i-history_length-1:i] for i in range(history_length+1, len(X_train))]
     X_valid = [X_valid[i-history_length-1:i] for i in range(history_length+1, len(X_valid))]
     y_train = [action_to_id(y) for y in y_train][history_length+1:]
     y_valid = [action_to_id(y) for y in y_valid][history_length+1:]
 
-    return X_train, y_train, X_valid, y_valid
+    return torch.Tensor(np.array(X_train)), torch.Tensor(np.array(y_train)), torch.Tensor(np.array(X_valid)), torch.Tensor(np.array(y_valid))
 
 
-def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard", history_length=1):
+def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard", history_length=1):
     
     # create result and model folders
     if not os.path.exists(model_dir):
@@ -66,8 +68,10 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     print("... train model")
 
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
-
-    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
+    class_dist = np.bincount(y_train) / len(y_train)
+    weights = torch.Tensor([1/class_dist[int(y)] for y in y_train])
+    sampler = WeightedRandomSampler(weights=weights, num_samples=len(y_train))
+    
     agent = BCAgent(history_length=history_length)
     
     tensorboard_eval = Evaluation(tensorboard_dir, 'imitation_learning', ['train-loss', 'train-acc', 'valid-loss', 'valid-acc'])
@@ -79,48 +83,33 @@ def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, l
     #    your training *during* the training in your web browser
 
     # training loop
+    train_loader = DataLoader(train, batch_size=batch_size, sampler=sampler)
+    valid_loader = DataLoader(valid, batch_size=batch_size, shuffle=True)
+    transform = T.Compose([
+        T.ToTensor()
+    ])
+
     train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
-    for i in range(n_minibatches):
-        agent.model.train()
-        X_batch, y_batch = sample_minibatch(X_train, y_train, batch_size)
+    for i, (X_batch, y_batch) in enumerate(train_loader):
+        X_batch = transform(X_batch)
         loss, logits = agent.update(X_batch, y_batch)
         train_loss += loss
         train_acc += accuracy(logits, y_batch)
 
-        agent.model.eval()
-        X_batch, y_batch = sample_minibatch(X_valid, y_valid, batch_size)
+        X_batch, y_batch = iter(valid_loader).next()
         logits = agent.predict(X_batch)
-        valid_loss += agent.loss_fn(logits, torch.LongTensor(y_batch))
+        valid_loss += agent.loss_fn(logits, y_batch)
         valid_acc += accuracy(logits, y_batch)
 
-        if i % 10 == 0 :
+        if i % 10 == 0:
             # TODO: compute training/ validation accuracy and write it to tensorboard
             print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' val_loss: ', float(valid_loss/10), ' valid-acc: ', float(valid_acc/10))
             tensorboard_eval.write_episode_data(i, {'train-loss': train_loss/10, 'train-acc': train_acc/10, 'valid-loss': valid_loss/10, 'valid-acc': valid_acc/10})
             train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
 
-    agent.model.eval()
-    logits = agent.predict(X_valid)
-    valid_loss = agent.loss_fn(logits, torch.LongTensor(y_valid))
-    valid_acc = accuracy(logits, y_valid)
-    print('minibatch: ', i, ' train-loss: ', float(train_loss/10), ' train-acc: ', float(train_acc/10), ' valid-loss: ', float(valid_loss), ' valid-acc: ', float(valid_acc))
-
     # TODO: save your agent
     model_dir = agent.save(os.path.join(model_dir, "agent.pt"))
     print("Model saved in file: %s" % model_dir)
-
-def sample_minibatch(X, y, batch_size, class_weights=[0.25, 0.25, 0.25, 0.25]):
-
-    sample_probs = np.zeros(shape=len(X))
-    for (i, weight) in enumerate(class_weights):
-        sample_probs[np.array(y) == i] = weight
-
-    sample_probs = np.exp(sample_probs) / sum(np.exp(sample_probs))
-
-    indices = np.random.choice(np.arange(len(X)), size=batch_size, p=sample_probs)
-    X_batch, y_batch = np.array(X)[indices], np.array(y)[indices]
-
-    return X_batch, y_batch
 
 
 def accuracy(logits, y):
@@ -135,10 +124,10 @@ if __name__ == "__main__":
     X_train, y_train, X_valid, y_valid = read_data("./data")
 
     # preprocess data
-    X_train, y_train, X_valid, y_valid = preprocessing(X_train, y_train, X_valid, y_valid, history_length=5)
+    X_train, y_train, X_valid, y_valid = preprocessing(X_train, y_train, X_valid, y_valid, history_length=0)
 
-    print(np.array(X_train).shape)
+    train, valid = TensorDataset(X_train, y_train), TensorDataset(X_valid, y_valid)
 
     # train model (you can change the parameters!)
-    train_model(X_train, y_train, X_valid, y_valid, n_minibatches=1000, batch_size=64, lr=1e-4, history_length=5)
+    train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches=1000, batch_size=64, lr=1e-4, history_length=0)
  

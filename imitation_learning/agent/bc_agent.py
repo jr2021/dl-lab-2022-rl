@@ -12,13 +12,10 @@ class BCAgent:
         self.optimizer = torch.optim.Adam(self.model.parameters())
 
     def update(self, X_batch, y_batch):
-        # TODO: transform input to tensors
-        X_batch, y_batch = torch.Tensor(X_batch), torch.LongTensor(y_batch)
-
         # TODO: forward + backward + optimize
         self.optimizer.zero_grad()
         y_pred = self.predict(X_batch)
-        loss = self.loss_fn(y_pred, y_batch)
+        loss = self.loss_fn(y_pred, torch.LongTensor(y_batch))
         loss.backward()
         self.optimizer.step()
 

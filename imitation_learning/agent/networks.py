@@ -24,7 +24,7 @@ class CNN(nn.Module):
         self.flatten = nn.Flatten()
 
         self.linear = nn.Sequential(
-	    nn.Linear(in_features=7744, out_features=256),
+	    nn.Linear(in_features=4096, out_features=256),
 	    nn.ReLU(),
 	    nn.Linear(in_features=256, out_features=out_features)
 	)
