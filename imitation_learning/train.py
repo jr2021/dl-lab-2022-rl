@@ -88,12 +88,15 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
     # training loop
     train_loader = DataLoader(train, batch_size=batch_size, sampler=sampler)
     transform = T.Compose([
-       T.ToTensor()
+       T.GaussianBlur(kernel_size=1)
     ])
 
     train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
     for i in range(n_minibatches):
         X_batch, y_batch = next(iter(train_loader))
+
+        print(torch.bincount(y_batch))
+
         X_batch = transform(X_batch)
         y_batch = y_batch.type(torch.LongTensor)
         X_batch, y_batch = X_batch.to(device), y_batch.to(device)
