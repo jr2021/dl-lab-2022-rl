@@ -5,6 +5,9 @@ from agent.dqn_agent import DQNAgent
 from train_carracing import run_episode
 from agent.networks import *
 import numpy as np
+import os
+import json
+from datetime import datetime
 
 np.random.seed(0)
 
@@ -15,7 +18,10 @@ if __name__ == "__main__":
     history_length =  0
 
     #TODO: Define networks and load agent
-    # ....
+    Q = CNN(out_features=5)
+    Q_target = CNN(out_features=5)
+    agent = DQNAgent(Q=Q, Q_target=Q_target, num_actions=2)
+    agent.load("models_carracing/dqn_agent.ckpt")
 
     n_test_episodes = 15
 

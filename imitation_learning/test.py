@@ -14,6 +14,12 @@ from agent.bc_agent import BCAgent
 from utils import *
 
 
+def preprocess_state(state):
+    state = rgb2gray(state)
+    state = state[12:-12, 12:-12]
+    return state
+
+
 def run_episode(env, agent, rendering=True, max_timesteps=1000):
     
     episode_reward = 0
@@ -27,7 +33,7 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
     while True:
         
         # TODO: preprocess the state in the same way than in your preprocessing in train_agent.py
-        state = preprocessing(state)
+        state = preprocess_state(state)
 
         # TODO: get the action from your agent! You need to transform the discretized actions to continuous
         # actions.
@@ -36,7 +42,11 @@ def run_episode(env, agent, rendering=True, max_timesteps=1000):
         #       - just in case your agent misses the first turn because
         #  it is too fast: you are allowed to clip the acceleration in test_agent.py
         #       - you can use the softmax output to calculate the amount of lateral acceleration
-        action_id = agent(state)
+    
+
+        action_id = torch.argmax(agent.predict(torch.Tensor(state.reshape(1, 1, 72, 72))))
+        
+
         a = id_to_action(action_id)
 
         next_state, r, done, info = env.step(a)   
@@ -61,8 +71,8 @@ if __name__ == "__main__":
     n_test_episodes = 15                  # number of episodes to test
 
     # TODO: load agent
-    agent = BCAgent()
-    agent.load("models/bc_agent.pt")
+    agent = BCAgent(class_weights=[0.25, 0.25, 0.25, 0.25])
+    agent.load("models/bc_agent_0.pt")
 
     env = gym.make('CarRacing-v0').unwrapped
 
@@ -77,6 +87,9 @@ if __name__ == "__main__":
     results["mean"] = np.array(episode_rewards).mean()
     results["std"] = np.array(episode_rewards).std()
  
+    if not os.path.exists("./results"):
+        os.mkdir("./results")  
+
     fname = "results/results_bc_agent-%s.json" % datetime.now().strftime("%Y%m%d-%H%M%S")
     fh = open(fname, "w")
     json.dump(results, fh)

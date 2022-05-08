@@ -67,11 +67,8 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
 
     print("... train model")
 
-    device = torch.device('cuda')
-
     # TODO: specify your agent with the neural network in agents/bc_agent.py 
     class_weights = torch.Tensor(np.bincount(y_train) / len(y_train))
-    class_weights = class_weights.to(device)
     sample_weights = torch.Tensor([1/class_weights[int(y)] for y in y_train])
     sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(y_train))
     
@@ -94,19 +91,14 @@ def train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches,
     train_loss, train_acc, valid_loss, valid_acc = 0, 0, 0, 0
     for i in range(n_minibatches):
         X_batch, y_batch = next(iter(train_loader))
-
-        print(torch.bincount(y_batch))
-
         X_batch = transform(X_batch)
         y_batch = y_batch.type(torch.LongTensor)
-        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
         loss, logits = agent.update(X_batch, y_batch)
         train_loss += loss
         train_acc += accuracy(logits, y_batch)
 
         with torch.no_grad():
             y_valid = y_valid.type(torch.LongTensor)
-            X_valid, y_valid = X_valid.to(device), y_valid.to(device)
             logits = agent.predict(X_valid)
             valid_loss += agent.loss_fn(logits, y_valid)
             valid_acc += accuracy(logits, y_valid)
@@ -139,5 +131,5 @@ if __name__ == "__main__":
     train, valid = TensorDataset(X_train, y_train), TensorDataset(X_valid, y_valid)
 
     # train model (you can change the parameters!)
-    train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches=10000, batch_size=64, lr=1e-4, history_length=0)
+    train_model(train, X_train, y_train, valid, X_valid, y_valid, n_minibatches=1000, batch_size=64, lr=1e-4, history_length=0)
  

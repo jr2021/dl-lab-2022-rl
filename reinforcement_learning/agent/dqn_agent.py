@@ -34,6 +34,7 @@ class DQNAgent:
 
         # define replay buffer
         self.replay_buffer = ReplayBuffer()
+        self.history_length = history_length
 
         # parameters
         self.batch_size = batch_size
@@ -46,7 +47,7 @@ class DQNAgent:
 
         self.num_actions = num_actions
 
-    def train(self, state, action, next_state, reward, terminal):
+    def train(self, state, action, next_state, reward, terminal, squeeze=False):
         """
         This method stores a transition to the replay buffer and updates the Q networks.
         """
@@ -57,6 +58,11 @@ class DQNAgent:
         # 2. sample next batch and perform batch update:
         next_batch = self.replay_buffer.next_batch(batch_size=self.batch_size)
         batch_states, batch_actions, batch_next_states, batch_rewards, batch_dones = next_batch
+
+        if squeeze:
+            batch_states = batch_states.squeeze(1)
+            batch_next_states = batch_next_states.squeeze(1)
+
         batch_state_actions = self.Q(batch_states).gather(1, batch_actions.unsqueeze(-1)).squeeze(-1)
         #       2.1 compute td targets and loss 
         expected_state_actions = batch_rewards + self.gamma * self.Q_target(batch_next_states).max(dim=1)[0]
@@ -81,13 +87,16 @@ class DQNAgent:
         r = np.random.uniform()
         if deterministic or r > self.epsilon:
             # TODO: take greedy action (argmax)
-            action_id = int(self.Q(torch.Tensor(state)).max(dim=0)[1])
+            action_id = int(self.Q(torch.Tensor(state)).argmax().item())
         else:
             # TODO: sample random action
             # Hint for the exploration in CarRacing: sampling the action from a uniform distribution will probably not work. 
             # You can sample the agents actions with different probabilities (need to sum up to 1) so that the agent will prefer to accelerate or going straight.
             # To see how the agent explores, turn the rendering in the training on and look what the agent is doing.
-            action_id = np.random.choice(a=np.arange(start=0, stop=self.num_actions))
+            if self.num_actions == 2:
+                action_id = np.random.choice(a=np.arange(start=0, stop=self.num_actions))
+            else: 
+                action_id = np.random.choice(a=np.arange(start=0, stop=self.num_actions), p=[0.25, 1/6, 1/6, 0.25, 1/6])
 
         return action_id
 

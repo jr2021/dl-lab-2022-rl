@@ -49,12 +49,13 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
  
     print("... train agent")
 
-    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"), 'dqn_cartpole', ["episode_reward", "a_0", "a_1"])
+    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"), 'cartpole', ["episode_reward", "a_0", "a_1"])
 
     # training
 
     for i in range(num_episodes):
-        stats = run_episode(env=env, agent=agent, deterministic=False, do_training=True)
+        stats = run_episode(env=env, agent=agent, deterministic=False, do_training=True, rendering=True)
+        print('episode: ', i, ' train_reward: ', stats.episode_reward)
         tensorboard.write_episode_data(episode=i, eval_dict={"episode_reward" : stats.episode_reward, 
                                                              "a_0" : stats.get_action_usage(action_id=0),
                                                              "a_1" : stats.get_action_usage(action_id=1)})
@@ -64,7 +65,7 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
         if i % eval_cycle == 0:
             episode_reward = 0
             for j in range(num_eval_episodes):
-                stats = run_episode(env=env, agent=agent, deterministic=True, do_training=False)
+                stats = run_episode(env=env, agent=agent, deterministic=True, do_training=False, rendering=True)
                 episode_reward += stats.episode_reward
             
             print('episode: ', i, ' valid_reward: ', float(episode_reward/num_eval_episodes))
@@ -101,5 +102,5 @@ if __name__ == "__main__":
     # 2. init DQNAgent (see dqn/dqn_agent.py)
     agent = DQNAgent(Q=Q, Q_target=Q_target, num_actions=num_actions)
     # 3. train DQN agent with train_online(...)
-    train_online(env=env, agent=agent, num_episodes=1000)
+    train_online(env=env, agent=agent, num_episodes=150)
  

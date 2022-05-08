@@ -15,17 +15,16 @@ class CNN(nn.Module):
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=history_length + 1, out_channels=16, kernel_size=5, stride=4),
             nn.ReLU(),
-#	    nn.Dropout(p=0.25),
+            nn.Dropout(p=0.1),
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
             nn.ReLU(),
-#	    nn.Dropout(p=0.25),
+            nn.Dropout(p=0.075),
             nn.Flatten(),
             nn.Linear(in_features=2048, out_features=128),
             nn.ReLU(),
+            nn.Dropout(p=0.05),
             nn.Linear(in_features=128, out_features=out_features)
         )
-
-        self.model.cuda()
 
 
     def forward(self, x):
